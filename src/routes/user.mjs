@@ -20,12 +20,21 @@ const getUserById = async (req, res, next)=>{
     
 }
 
-router.get("/users",(req, res)=>{
-    res.send(users);
+router.get("/users",async (req, res)=>{
+    try{
+        const users = await User.find();
+        if(!users) return res.status(400).send({msg: "users not found!"});
+        return res.send(users);
+
+    }catch(err){
+
+    }
 });
 
 router.get("/users/:id",getUserById,(req, res)=>{
-    res.send(req.user);
+    const user = req.user;
+    if(!user) return res.status(400).send({msg: "user not found!"});
+    res.send(user);
 });
 
 router.post("/users",
@@ -43,8 +52,51 @@ router.post("/users",
     }
 });
 
+router.put("/users/:id",
+    checkSchema(createUserValidationSchema)
+    ,getUserById,async (req, res)=>{
+    const user = req.user;
+    const result = validationResult(req);
+    if(!result.isEmpty()){
+        return res.status(400).send({msg: result.array()});
+    }
+    const {username, password} = matchedData(req);
+    user.username = username;
+    user.password = password;
+    console.log(user.username);
+    try{
+       const updatedUser = await user.save();
+       return res.status(200).send(updatedUser);
+    }catch(err){
+        return res.status(400).send({msg: "failed to update the user"})
+    }
+});
 
+router.patch("/users/:id",getUserById, async(req, res)=>{
+    const user = req.user;
+    const {body} = req;
+    if(body.username){
+        user.username = body.username;
+    }
+    if(body.password){
+        user.password = body.password;
+    }
+    try{
+        const updatedUser = await user.save();
+        return res.send(updatedUser);
+    }catch(err){
+        return res.status(400).send({msg: "failed to update user"});
+    }
+});
 
-
+router.delete("/users/:id",getUserById,async (req, res)=>{
+    const user = req.user;
+    try{
+        await user.deleteOne();
+        return res.send({msg: "user deleted"});
+    }catch(err){
+        return res.send({msg: "failed to delete user"});
+    }
+});
 
 export default router;
